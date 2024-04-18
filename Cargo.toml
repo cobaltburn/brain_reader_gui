@@ -1,0 +1,22 @@
+[package]
+name = "iced_gui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+blocking = "1.5.1"
+features = "0.10.0"
+iced = { version = "0.12.1", features = ["multi-window"] }
+once_cell = "1.19.0"
+pyo3 = { version = "0.21.2", features = ["auto-initialize"] }
+rand = "0.8.5"
+reqwest = { version = "0.12.3", features = ["blocking", "json"] }
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.116"
+tello = "0.6.3"
+tokio = "1.37.0"
+brainflow = { path = "brainflow" }
+csv = "1.3.0"
+anyhow = "1.0.82"
