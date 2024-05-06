@@ -1,5 +1,5 @@
 [package]
-name = "iced_gui"
+name = "brain_reader_gui"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,7 +10,6 @@ blocking = "1.5.1"
 features = "0.10.0"
 iced = { version = "0.12.1", features = ["multi-window"] }
 once_cell = "1.19.0"
-pyo3 = { version = "0.21.2", features = ["auto-initialize"] }
 rand = "0.8.5"
 reqwest = { version = "0.12.3", features = ["blocking", "json"] }
 serde = { version = "1.0.197", features = ["derive"] }
