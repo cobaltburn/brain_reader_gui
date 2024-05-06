@@ -78,6 +78,8 @@ enum Message {
     ReadBrain,
     Connect,
     Execute,
+    Takeoff,
+    Land,
 }
 
 impl Sandbox for PredictionWindow {
@@ -98,7 +100,7 @@ impl Sandbox for PredictionWindow {
     fn update(&mut self, message: Self::Message) {
         match message {
             Message::ReadBrain => {
-                let readings = read_synthetic_board();
+                let readings = read_cyton_board();
                 let Ok(readings) = readings else {
                     eprintln!("{:?}", readings);
                     return;
@@ -192,6 +194,36 @@ impl Sandbox for PredictionWindow {
                     };
                 }); */
             }
+            Message::Takeoff => {
+                if !self.connection {
+                    return;
+                }
+                let Ok(mut drone) = DRONE.try_lock() else {
+                    eprintln!("Unable to obtain a lock on the drone");
+                    return;
+                };
+
+                let Ok(rt) = Runtime::new() else {
+                    eprintln!("unable to bind runtime");
+                    return;
+                };
+                let _ = rt.block_on(drone.take_off());
+            }
+            Message::Land => {
+                if !self.connection {
+                    return;
+                }
+                let Ok(drone) = DRONE.try_lock() else {
+                    eprintln!("Unable to obtain a lock on the drone");
+                    return;
+                };
+
+                let Ok(rt) = Runtime::new() else {
+                    eprintln!("unable to bind runtime");
+                    return;
+                };
+                let _ = rt.block_on(drone.land());
+            }
         }
     }
 
@@ -284,11 +316,30 @@ impl Sandbox for PredictionWindow {
         .width(100)
         .height(100);
 
+        let takeoff = button(
+            text("takeoff")
+                .horizontal_alignment(Horizontal::Center)
+                .vertical_alignment(Vertical::Center),
+        )
+        .on_press(Message::Takeoff)
+        .width(50)
+        .height(50);
+        let land = button(
+            text("land")
+                .horizontal_alignment(Horizontal::Center)
+                .vertical_alignment(Vertical::Center),
+        )
+        .on_press(Message::Land)
+        .width(50)
+        .height(50);
+
         let view = row![
             Space::with_width(Length::FillPortion(1)),
             column![
                 reading_window,
                 connect,
+                Space::with_width(100),
+                row![takeoff, land],
                 Space::with_height(Length::FillPortion(1))
             ]
             .width(Length::FillPortion(1)),
@@ -342,6 +393,36 @@ fn display_count(history: &Vec<Prediction>) -> String {
     counts
 }
 
+fn read_cyton_board() -> anyhow::Result<HashMap<String, Vec<f64>>> {
+    let params = BrainFlowInputParamsBuilder::default()
+        .serial_port("/dev/ttyUSB0")
+        .build();
+    let board = board_shim::BoardShim::new(BoardIds::CytonDaisyBoard, params)?;
+    board.prepare_session()?;
+
+    board.start_stream(45000, "")?;
+    thread::sleep(Duration::from_secs(10));
+
+    board.stop_stream()?;
+    let data = board.get_board_data(None, BrainFlowPresets::DefaultPreset)?;
+    board.release_session()?;
+    println!("{:?}", data.view());
+
+    let mut readings = HashMap::new();
+
+    // rows from the board represent columns in the tensor
+    for (i, arr) in data.rows().into_iter().enumerate() {
+        let mut column = vec![];
+        for j in arr.into_owned() {
+            column.push(j);
+        }
+        readings.insert(format!("c{}", i), column);
+    }
+
+    Ok(readings)
+}
+
+#[allow(dead_code)]
 fn read_synthetic_board() -> anyhow::Result<HashMap<String, Vec<f64>>> {
     brainflow::board_shim::enable_dev_board_logger()?;
     let params = BrainFlowInputParamsBuilder::default().build();
